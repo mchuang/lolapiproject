@@ -25,7 +25,7 @@ SECRET_KEY = '23(vszv=mza(o!yu&vqtqp7zl3=&al=11ea%6@12nveb&=7j=a'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [elopurgatory.herokuapp.com,]
 
 
 # Application definition
