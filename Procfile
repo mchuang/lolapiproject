@@ -1,1 +1,1 @@
-web: gunicorn lolapiproject.api
+web: gunicorn lolapiProject.wsgi
