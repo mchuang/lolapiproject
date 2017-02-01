@@ -1,7 +1,9 @@
 from django.shortcuts import render
 
+import json
 import requests
 import time
+import pdb
 
 RATE_LIMIT_EXCEEDED_SLEEP_DURATION = 10
 
@@ -20,16 +22,46 @@ URLS = dict(
 )
 
 from django.http import HttpResponse
+import eloPurgatory.logic
+from eloPurgatory.logic import handleSummoner, handleMatchRank, handleMatchDetails
 
-def basicCall(request, region, summonerName):
-    r = getSummonerInfo(region, summonerName)
-    return HttpResponse(r)
+def basicCall(request, region, queue, summonerName):
+    summonerInfo = getSummonerInfo(region, summonerName)
+    summoner = handleSummoner(summonerName, summonerInfo)
+    summonerRank = handleMatchRank(summoner, queue, getRankInfo(region, summoner.summonerId), None)
+    matchlistInfo = getMatchListInfo(region, summoner.summonerId, queue)
+    matches = matchlistInfo['matches']
+    index = 0
+    matchlimit = 10
+    matchlist = {}
+    for match in matches:
+        if index >= matchlimit:
+            break
+        matchInfo = getMatchInfo(match['region'], match['matchId'])
+        if matchInfo == None:
+            continue
+        data = handleMatchDetails(matchInfo, summoner.summonerId)
+        matchlist.update(data)
+        index += 1
+
+    for matchId, matchData in matchlist.items():
+        players = matchData['players']
+        matchPlayerIds = ','.join(str(x) for x in players.keys())
+        matchPlayerInfo = getSummonerInfoById(region, matchPlayerIds)
+        matchRanks = getRankInfo(region, matchPlayerIds)
+        for playerId, data in players.items():
+            player = handleSummoner(playerId, matchPlayerInfo)
+            rank = handleMatchRank(player, queue, matchRanks, data['prevSeasonTier'])
+            data.update({ 'rank': rank })
+    
+    data = json.dumps({ 'summoner': summoner, 'rank': summonerRank, 'region': region, 'matchlist': matchlist})
+    return render(request, 'elo.html', data)
 
 
 def executeRequest(url, payload):
     response = requests.get(url, params=payload)
     while response.status_code == requests.codes.too_many_requests:
-        time.sleep(int(r.headers.get('Retry-After')))
+        time.sleep(int(response.headers.get('Retry-After')))
         response = requests.get(url, params=payload)    
     return response
 
@@ -37,19 +69,46 @@ def getSummonerInfo(region, summonerName):
     url = (base_url+URLS['summoner_by_name']).format(region=region, summonerName=summonerName)
     payload = {'api_key': api_key}
     response = executeRequest(url, payload)
-    return response
+    while response.status_code != requests.codes.ok:
+        time.sleep(1)
+        response = executeRequest(url, payload)
+    return response.json()
+
+def getSummonerInfoById(region, summonerId):
+    url = (base_url+URLS['summoner_by_id']).format(region=region, summonerId=summonerId)
+    payload = {'api_key': api_key}
+    response = executeRequest(url, payload)
+    while response.status_code != requests.codes.ok:
+        time.sleep(1)
+        response = executeRequest(url, payload)
+    return response.json()
 
 def getRankInfo(region, summonerId):
-    url = (base_url+URLS['rank_data'].format(region=region, summonerId=summonerId))
+    url = (base_url+URLS['rank_data']).format(region=region, summonerId=summonerId)
     payload = {'api_key': api_key}
     response = executeRequest(url, payload)
-    return response
+    while response.status_code != requests.codes.ok:
+        time.sleep(1)
+        response = executeRequest(url, payload)
+    return response.json()
 
-def getMatchInfo(summonderId):
-    url = (base_url+URLS['match_list'].format(summonerId=summonerId))
+def getMatchListInfo(region, summonerId, queue):
+    url = (base_url+URLS['match_list']).format(region=region, summonerId=summonerId)
+    payload = {'api_key': api_key, 'rankedQueues': queue}
+    response = executeRequest(url, payload)
+    while response.status_code != requests.codes.ok:
+        time.sleep(1)
+        response = executeRequest(url, payload)
+    return response.json()
+
+def getMatchInfo(region, matchId):
+    url = (base_url+URLS['match']).format(region=region, matchId=matchId)
     payload = {'api_key': api_key}
     response = executeRequest(url, payload)
-    return response
+    if response.status_code != requests.codes.ok:
+        return None
+    else:
+        return response.json()
 
 def handle_status(r):
     if r.status_code == requests.codes.ok:
@@ -58,4 +117,4 @@ def handle_status(r):
         time.sleep(int(r.headers.get('Retry-After', RATE_LIMIT_EXCEEDED_SLEEP_DURATION))) 
     else:
         r.raise_for_status()
-
+    
