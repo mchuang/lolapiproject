@@ -23,7 +23,7 @@ URLS = dict(
 
 from django.http import HttpResponse
 import eloPurgatory.logic
-from eloPurgatory.logic import handleSummoner, handleMatchRank, handleMatchDetails
+from eloPurgatory.logic import handleSummoner, handleMatchRank, handleMatchDetails, convertModelToDict
 
 def basicCall(request, region, queue, summonerName):
     summonerInfo = getSummonerInfo(region, summonerName)
@@ -32,7 +32,7 @@ def basicCall(request, region, queue, summonerName):
     matchlistInfo = getMatchListInfo(region, summoner.summonerId, queue)
     matches = matchlistInfo['matches']
     index = 0
-    matchlimit = 10
+    matchlimit = 5
     matchlist = {}
     for match in matches:
         if index >= matchlimit:
@@ -52,10 +52,10 @@ def basicCall(request, region, queue, summonerName):
         for playerId, data in players.items():
             player = handleSummoner(playerId, matchPlayerInfo)
             rank = handleMatchRank(player, queue, matchRanks, data['prevSeasonTier'])
-            data.update({ 'rank': rank })
-    
-    data = json.dumps({ 'summoner': summoner, 'rank': summonerRank, 'region': region, 'matchlist': matchlist})
-    return render(request, 'elo.html', data)
+            data.update({ 'rank': convertModelToDict(rank) })
+     
+    jsonData = json.dumps({ 'summoner': convertModelToDict(summoner), 'region': region, 'rank': convertModelToDict(summonerRank), 'matchlist': matchlist })
+    return render(request, 'elo.html', { "data": jsonData,  'matchlist': matchlist })
 
 
 def executeRequest(url, payload):

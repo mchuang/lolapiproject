@@ -25,7 +25,7 @@ SECRET_KEY = '23(vszv=mza(o!yu&vqtqp7zl3=&al=11ea%6@12nveb&=7j=a'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['elopurgatory.herokuapp.com',]
+ALLOWED_HOSTS = ['*', 'elopurgatory.herokuapp.com',]
 
 
 # Application definition
@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'eloPurgatory.apps.ElopurgatoryConfig',
 ]
 
 MIDDLEWARE = [
@@ -75,8 +76,12 @@ WSGI_APPLICATION = 'lolapiProject.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'lolapiproject',
+        'USER': 'postgres',
+        'PASSWORD': 'dorkhead327',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 

@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.forms.models import model_to_dict
 from eloPurgatory.models import *
 
 def handleSummoner(name, json):
@@ -54,4 +55,11 @@ def handleMatchDetails(json, summonerId):
         if team['teamId'] == summonerTeamId:
             matchData.update({ 'winner': team['winner'] })
     
-    return { json['matchId']: matchData }
+    return { json['matchId'] : matchData }
+
+def convertModelToDict(model):
+    data = model_to_dict(model)
+    if type(model) is RankInfo:
+        data.update({ 'summoner': model_to_dict(model.summoner) })
+    return data
+        

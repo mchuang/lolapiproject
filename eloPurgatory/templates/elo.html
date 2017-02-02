@@ -1,49 +1,66 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>ELO PURGATORY</title>
+</head>
+
+<body>
+<form>
 <ul>
 {% for matchId, matchData in matchlist.items %}
-    <li><a href="http://matchhistory.{{region}}.leagueoflegends.com/en/#match-details/NA1/{{matchId}}/{{summoner.summonerId}}">{{ matchId }}</a>:{{ matchData.winner }}
+    <li><input id={{matchId}} type="checkbox" checked>
+    <a href="http://matchhistory.{{region}}.leagueoflegends.com/en/#match-details/NA1/{{matchId}}/{{summoner.summonerId}}">{{ matchId }}</a>
     <ul>
     {% for playerId, playerData in matchData.players.items %}
-        <li>{{ playerData.rank }}:{{ playerData.isAlly }}</li>
+        <li>{{ playerData.rank.summoner.name }}:{{ playerData.rank.tier }} {{ playerData.rank.division }}</li>
     {% endfor %}
     </ul>
     </li>
 {% endfor %}
 </ul>
+</form>
+</body>
 
-<p id="test"></p>
-
-<script>
-var matches = {{matchlist|safe}};
-
-var tier = { CHALLENGER : 6,
-             MASTER     : 5,
-             DIAMOND    : 4,
-             PLATINUM   : 3,
-             GOLD       : 2,
-             SILVER     : 1,
-             BRONZE     : 0, };
+<script type="text/javascript">
+var temp = {{data|safe}};
+var matches = temp.matchlist;
+var tier = { CHALLENGER : 7,
+             MASTER     : 6,
+             DIAMOND    : 5,
+             PLATINUM   : 4,
+             GOLD       : 3,
+             SILVER     : 2,
+             BRONZE     : 1,
+             UNRANKED   : 0, };
 var division = { I   : 4,
                  II  : 3,
                  III : 2,
                  IV  : 1,
                  V   : 0, };
-console.log(matches);
-var data = {};
+
+var data = { UNRANKED: 0 };
 for (matchId in matches) {
-    matchData = matches.matchId;
-    players = matchData.players;
+    var matchData = matches[matchId];
+    var players = matchData.players;
     for (playerId in players) {
-        playerData = matchData.players.playerId;
+        playerData = players[playerId];
+        if (playerData.rank.tier == "UNRANKED") {
+            data[playerData.rank]++;
+            continue;
+        }
         if (!(playerData.rank.tier in data)) {
             data[playerData.rank.tier] = { I   : 0,
                                            II  : 0,
                                            III : 0,
                                            IV  : 0,
                                            V   : 0, };
-        }
+        } 
         data[playerData.rank.tier][playerData.rank.division]++;
     }
 }
 
 console.log(data);
 </script>
+
+</html>
