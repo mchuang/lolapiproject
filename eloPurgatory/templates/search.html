@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block search %}
+
+<form action="{% url 'eloPurgatory:handler' %}" method="get" onsubmit="return validate()">
+    <select id="region" name="region">
+        <option value="na" selected>NA</option>
+        <option value="eune">EUNE</option>
+        <option value="euw">EUW</option>
+        <option value="jp">JP</option>
+        <option value="kr">KR</option>
+        <option value="lan">LAN</option>
+        <option value="las">LAS</option>
+        <option value="br">BR</option>
+        <option value="oce">OCE</option>
+        <option value="tr">TR</option>
+        <option value="ru">RU</option>
+        <option value="pbe">PBE</option>
+    </select>
+    Summoner:
+    <input type="text" id="summoner" name="summoner">
+    <select id="queue" name="queue">
+        <option value="RANKED_SOLO_5x5" selected>SOLO</option>
+        <option value="RANKED_FLEX_SR">FLEX</option>
+    </select>
+    <input type="submit">
+</form>
+
+<script>
+function validate(){ 
+    var a = document.getElementById("summoner");
+    if (a == null || a == "") {
+        alert("Must enter summoner name");
+        return false;
+    } else {
+        return true;
+    }
+}
+</script>
+
+{% endblock %}

@@ -19,7 +19,10 @@ def handleMatchRank(summoner, queue, json, prevRank):
     ranks = json[str(summoner.summonerId)]
     for rank in ranks:
         if rank['queue'] == queue:
-            return RankInfo(summoner=summoner, queue=rank['queue'], division=rank['entries'][0]['division'], tier=rank['tier'], prevSeasonTier=prevRank)
+            if rank['tier'] == "CHALLENGER" or rank['tier'] == "MASTER":
+                return RankInfo(summoner=summoner, queue=rank['queue'], division=rank['entries'][0]['leaguePoints'], tier=rank['tier'], prevSeasonTier=prevRank)
+            else:
+                return RankInfo(summoner=summoner, queue=rank['queue'], division=rank['entries'][0]['division'], tier=rank['tier'], prevSeasonTier=prevRank)
     return RankInfo(summoner=summoner, queue=queue, division='UNRANKED', tier='UNRANKED', prevSeasonTier=prevRank)
 
 def handleMatchDetails(json, summonerId):

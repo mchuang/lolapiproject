@@ -20,10 +20,37 @@ URLS = dict(
     summary_stats='v1.3/stats/by-summoner/{summonerId}/summary',
     rank_data='v2.5/league/by-summoner/{summonerId}/entry'
 )
+platforms = dict(
+    br='BR1',
+    eune='EUN1',
+    euw='EUW1',
+    jp='JP1',
+    kr='KR',
+    lan='LA1',
+    las='LA2',
+    na='NA1',
+    oce='OC1',
+    tr='TR1',
+    ru='RU',
+    pbe='PBE1',
+)
+tier_icons = dict(
+    UNRANKED='base_icons/provisional.png',
+    BRONZE='base_icons/bronze.png',
+    SILVER='base_icons/silver.png',
+    GOLD='base_icons/gold.png',
+    PLATINUM='base_icons/platinum.png',
+    DIAMOND='base_icons/diamond.png',
+    MASTER='base_icons/master.png',
+    CHALLENGER='base_icons/challenger.png',
+)
 
 from django.http import HttpResponse
 import eloPurgatory.logic
 from eloPurgatory.logic import handleSummoner, handleMatchRank, handleMatchDetails, convertModelToDict
+
+def home(request):
+    return render(request, 'search.html')
 
 def basicCall(request, region, queue, summonerName):
     summonerInfo = getSummonerInfo(region, summonerName)
@@ -32,7 +59,7 @@ def basicCall(request, region, queue, summonerName):
     matchlistInfo = getMatchListInfo(region, summoner.summonerId, queue)
     matches = matchlistInfo['matches']
     index = 0
-    matchlimit = 5
+    matchlimit = 20
     matchlist = {}
     for match in matches:
         if index >= matchlimit:
@@ -54,9 +81,16 @@ def basicCall(request, region, queue, summonerName):
             rank = handleMatchRank(player, queue, matchRanks, data['prevSeasonTier'])
             data.update({ 'rank': convertModelToDict(rank) })
      
-    jsonData = json.dumps({ 'summoner': convertModelToDict(summoner), 'region': region, 'rank': convertModelToDict(summonerRank), 'matchlist': matchlist })
-    return render(request, 'elo.html', { "data": jsonData,  'matchlist': matchlist })
+    jsonData = json.dumps(matchlist)
+    return render(request, 'elo.html', 
+        { 'data': jsonData, 'region': region, 'summoner': summoner, 'rank':summonerRank, 
+        'platform': platforms[region], 'matchlist': matchlist, 'tier_icons': tier_icons })
 
+def handler(request):
+    region = request.GET['region']
+    summonerName = request.GET['summoner']
+    queue = request.GET['queue']
+    return basicCall(request, region, queue, summonerName)
 
 def executeRequest(url, payload):
     response = requests.get(url, params=payload)
