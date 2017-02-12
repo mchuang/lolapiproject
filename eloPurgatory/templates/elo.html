@@ -4,6 +4,18 @@
 {% load static %}
 <script src="{% static 'd3.js' %}" type="text/javascript"></script>
 
+<div id="chart">
+</div>
+
+<img src={% static tier_icons.BRONZE %} width=200 height=200>
+<img src={% static tier_icons.SILVER %} width=200 height=200>
+<img src={% static tier_icons.GOLD %} width=200 height=200>
+<img src={% static tier_icons.PLATINUM %} width=200 height=200>
+<img src={% static tier_icons.DIAMOND %} width=200 height=200>
+<img src={% static tier_icons.MASTER %} width=200 height=200>
+<img src={% static tier_icons.CHALLENGER %} width=200 height=200>
+
+
 <form id="matchlist">
 <ul>
 {% for matchId, matchData in matchlist.items %}
@@ -20,16 +32,11 @@
 <input type="button" onclick="drawRankDistroChart(rankHandler())">
 </form>
 
-{% for tier, tierPNG in tier_icons.items %}
-    {% if tier != "UNRANKED" %}    
-    <img src="{% static tierPNG %}" width=200 height=200>
-    {% endif %}
-{% endfor %}
-
 <script>
 var matches = {{data|safe}};
-var tiers = ["UNRANKED", "BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND", "MASTER", "CHALLENGER"];
-drawRankDistroChart(rankHandler());
+var tiers = {{tiers|safe}}//["UNRANKED", "BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND", "MASTER", "CHALLENGER"];
+var icons = {{tier_icons|safe}};
+rankHandler();
 
 function rankHandler() {
     var rankCount = { };
@@ -67,21 +74,11 @@ function rankHandler() {
         }
     }
 
-    var dataset = [];
-    for (tier in rankCount) {
-        if (tier == "UNRANKED" || tier == "MASTER" || tier == "CHALLENGER")) {
-            continue;
-        } else {
-            for (division in rankCount[tier]) {
-                dataset.push(rankCount[tier][division]);
-            }        
-        }
-    }       
-
-    //handleMasterChallenger(rankCount["MASTER"], 5);
-    //handleMasterChallenger(rankCount["CHALLENGER"], 5);
-
-    return dataset;
+    rankCount["MASTER"] = handleMasterChallenger(rankCount["MASTER"], 5);
+    rankCount["CHALLENGER"] = handleMasterChallenger(rankCount["CHALLENGER"], 5);
+    
+    var dataset = organizeRankData(rankCount);
+    drawRankDistroChart(dataset["data"], dataset["label"]);
 }
 
 function handleMasterChallenger(dataset, blocks, lower) {
@@ -103,77 +100,87 @@ function handleMasterChallenger(dataset, blocks, lower) {
                 higher = lower + Math.round(range * blockIndex / blocks);
             }
         }
+        return result;
+    } else {
+        return { V:   0,
+                 IV:  0,
+                 III: 0,
+                 II:  0,
+                 I:   0, };
     }
-    return result;
 }
 
-function drawRankDistroChart(dataset) {
-    d3.select("body").select("svg").remove();
+function organizeRankData(ranks) {
+    var data = [];
+    var label = [];
+    for (tier in ranks) {
+        if (tier == "UNRANKED") {
+            continue;
+        } else {
+            for (division in ranks[tier]) {
+                data.push(ranks[tier][division]);
+                label.push(division);
+            }
+        }
+    }
+    return { "data": data, "label": label }
+}
+
+function drawRankDistroChart(dataset, labelset) {
+    d3.select("#chart").select("svg").remove();
     var padding = 1;
     var w = 1400;
     var h = 600;
-    var svg = d3.select("body")
+    var svg = d3.select("#chart")
                 .append("svg")
                 .attr("width", w)
                 .attr("height", h);
-    for (tier in dataset) {
-        var numValues = [];
-        var textValues = []
-        if (tier == "UNRANKED" || tier == "MASTER" || tier == "CHALLENGER") {
-            continue;
-        } else {
-            for (division in dataset[tier]) {
-                numValues.append(dataset[tier][division]);
-                textValues.append(division);
-            }
-        }
-        svg.selectAll("rect").data(numValues)
-                            .enter()
-                            .append("rect")
-                            .attr("x", function(d, i) {
-                                return i * (w / dataset.length);
-                             })
-                            .attr("y", function(d) {
-                                return h - d * 20;
-                            })
-                            .attr("width", w / dataset.length - padding)
-                            .attr("height", function(d) {
-                                return d * 20;
-                            })
-                            .attr("fill" , function(d) {
-                                return "rgb(0, 0, " + (d * 20) + ")";
-                            });
+    
 
-        svg.selectAll("text").data(numValues)
-                             .enter()
-                             .append("text")
-                             .text(function(d) {
-                                return d;
-                             })
-                             .attr("x", function(d, i) {
-                                return i * (w / dataset.length) + 10 ;
-                             })
-                             .attr("y", function(d) {
-                                return h - (d * 10) + 20;
-                             })
-                             .attr("text-anchor", "middle")
-                             .attr("fill", "white");
+    svg.selectAll("rect").data(dataset)
+                         .enter()
+                         .append("rect")
+                         .attr("x", function(d, i) {
+                            return i * (w / dataset.length);
+                         })
+                         .attr("y", function(d) {
+                             return h - d * 20;
+                         })
+                         .attr("width", w / dataset.length - padding)
+                         .attr("height", function(d) {
+                            return d * 20;
+                         })
+                         .attr("fill" , function(d) {
+                             return "rgb(0, 0, " + (d * 20) + ")";
+                         });
 
-        svg.selectAll("text").data(textValues)
-                             .enter()
-                             .append("text")
-                             .text(function(d) {
-                                return d;
-                             })
-                             .attr("x", function(d, i) {
-                                return i * (w / dataset.length) + 10;
-                             })
-                             .attr("y", function(d) {
-                                return h - (d * 10) + 20;
-                             }) 
-                             .attr("text-anchor", "middle")
-                             .attr("fill", "white");                                                                                                                                                                                                                                         
-    }
+    svg.selectAll("text").data(dataset)
+                         .enter()
+                         .append("text")
+                         .text(function(d) {
+                           return d;
+                         })
+                         .attr("x", function(d, i) {
+                            return i * (w / dataset.length) + 20 ;
+                         })
+                         .attr("y", function(d) {
+                           return h - (d * 10) + 20;
+                         })
+                         .attr("text-anchor", "middle")
+                         .attr("fill", "white");
+        
+    svg.selectAll("text").data(labelset)
+                         .enter()
+                         .append("text")
+                         .text(function(d) {
+                            return d;
+                         .attr("x", function(d, i) {
+                            return i * (w / labelset.length) + 20;
+                         .attr("y", function(d) {
+                            return h;
+                         })
+                         .attr("text-anchor", "middle")
+                         .attr("fill", "white");
 }
 
 </script>
