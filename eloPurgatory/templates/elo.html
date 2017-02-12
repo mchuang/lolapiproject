@@ -76,8 +76,9 @@ function rankHandler() {
 
     rankCount["MASTER"] = handleMasterChallenger(rankCount["MASTER"], 5);
     rankCount["CHALLENGER"] = handleMasterChallenger(rankCount["CHALLENGER"], 5);
-    
+     
     var dataset = organizeRankData(rankCount);
+    console.log(dataset);
     drawRankDistroChart(dataset["data"], dataset["label"]);
 }
 
@@ -174,13 +175,15 @@ function drawRankDistroChart(dataset, labelset) {
                          .append("text")
                          .text(function(d) {
                             return d;
+                         })
                          .attr("x", function(d, i) {
                             return i * (w / labelset.length) + 20;
+                         })
                          .attr("y", function(d) {
                             return h;
                          })
                          .attr("text-anchor", "middle")
-                         .attr("fill", "white");
+                         .attr("fill", "black");
 }
 
 </script>

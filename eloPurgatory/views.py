@@ -45,58 +45,56 @@ tier_icons = dict(
     MASTER='base_icons/master.png',
     CHALLENGER='base_icons/challenger.png',
 )
-
+queues = dict(
+    SOLO="RANKED_SOLO_5x5",
+    FLEX="RANKED_FLEX_SR",
+)
 from django.http import HttpResponse
 from eloPurgatory.models import *
 from eloPurgatory.logic import handleSummoner, handleMatchRank, handleMatchDetails, convertModelToDict
 
 def home(request):
-    return render(request, 'search.html')
+    return render(request, 'search.html', { 'currentRegion':'na', 'regions': platforms.keys(), 'queues': queues })
 
 def basicCall(request, region, queue, summonerName, update=False):
     summoner = getSummonerInfo(region, summonerName, update)
-    summonerRank = handleMatchRank(summoner, queue, getRankInfo(region, summoner.summonerId))
-    
+    summonerRank = getRankInfo(region, summoner.summonerId, queue)
     matches = getMatchListInfo(region, summoner.summonerId, queue)['matches']
     #matches = matchlistInfo['matches']
     index = 0
-    matchlimit = 20
+    matchlimit = 10
     matchlist = {}
     for match in matches:
         if index >= matchlimit:
             break
+        matchInfo = getMatchInfo(region, match['matchId'])
         if matchInfo == None:
             continue
         data = handleMatchDetails(matchInfo, summoner.summonerId)
         matchlist.update(data)
         index += 1
-
     for matchId, matchData in matchlist.items():
         players = matchData['players']
         playerList = getSummonerInfoByIdList(region, players.keys(), update)
-        rankList = getRankInfoByList(region, summonerList, update)
+        rankList = getRankInfoByList(region, playerList, queue, update)
         for rank in rankList:
             playerId = rank.summoner.summonerId
             players[playerId].update({ 'rank': convertModelToDict(rank) })
-     
     jsonData = json.dumps(matchlist)
     return render(request, 'elo.html', 
-        { 'data': jsonData, 'region': region, 'summoner': summoner, 'rank':summonerRank, 
+        { 'data': jsonData, 'currentRegion': region, 'regions': platforms.keys(), 'summoner': summoner, 'rank':summonerRank, 'currentQueue': queue, 'queues': queues,
         'platform': platforms[region], 'matchlist': matchlist, 'tier_icons': tier_icons, 'tiers': tiers })
 
 def handler(request):
-    pdb.set_trace()
     region = request.POST['region']
     summonerName = request.POST['summoner']
     queue = request.POST['queue'] 
-    
-    return basicCall(request, region, queue, summonerName)
+    if request.POST['search'] == 'Update':
+        update = True
+    else:
+        update = False
+    return basicCall(request, region, queue, summonerName, update)
 
-def update(request):
-    region = request.POST['region']
-    summonerName = request.POST['summoner']
-    queue = request.POST['queue']
-    return basicCall(request, region, queue, summonerName, True)
 
 def executeRequest(url, payload):
     response = requests.get(url, params=payload)
@@ -117,8 +115,8 @@ def getSummonerInfo(region, summonerName, update=False):
     return summoner
 
 def getSummonerInfoById(region, summonerId, update=False):
-    if Summoner.filter(summonerId=summonerId, region=region).exists() and not update:
-        return Summoner.get(summonerId=summonerId, region=region)
+    if Summoner.objects.filter(summonerId=summonerId, region=region).exists() and not update:
+        return Summoner.objects.get(summonerId=summonerId, region=region)
     else:
         url = (base_url+URLS['summoner_by_id']).format(region=region, summonerId=summonerId)
         payload = {'api_key': api_key}
@@ -126,15 +124,15 @@ def getSummonerInfoById(region, summonerId, update=False):
         while response.status_code != requests.codes.ok:
             time.sleep(1)
             response = executeRequest(url, payload)
-        summonerName = response.json()[summonerId]["name"]
-        return handleSummoner(region, summonerName, response.json())
+        summonerName = response.json()[str(summonerId)]["name"]
+        return handleSummoner(region, summonerId, response.json())
 
 def getSummonerInfoByIdList(region, summonerIds, update=False):
     summonerList = []
     new = []
     for summonerId in summonerIds:
-        if Summoner.filter(summonerId=summonerId, region=region).exists() and not update:
-            summonerList.append(Summoner.get(summonerId=summonerId, region))
+        if Summoner.objects.filter(summonerId=summonerId, region=region).exists() and not update:
+            summonerList.append(Summoner.objects.get(summonerId=summonerId, region=region))
         else:
             new.append(summonerId)
     if len(new) > 0:
@@ -145,14 +143,15 @@ def getSummonerInfoByIdList(region, summonerIds, update=False):
             time.sleep(1)
         response = executeRequest(url, payload)
         for summonerId in new:
-            summonerName = response.json()[summonerId]['name']
-            newSummoner = handleSummoner(region, summonerName, response.json())
+            summonerName = response.json()[str(summonerId)]['name']
+            newSummoner = handleSummoner(region, summonerId, response.json())
             summonerList.append(newSummoner)
     return summonerList
 
 def getRankInfo(region, summonerId, queue, update=False):
-    if RankInfo.filter(summoner.summonerId=summonerId, queue=queue).exists() and not update:
-        return RankInfo.get(summoner.summonerId=summonerId, queue=queue)
+    summoner = getSummonerInfoById(region, summonerId, update)
+    if RankInfo.objects.filter(summoner=summoner, queue=queue).exists() and not update:
+        return RankInfo.objects.get(summoner=summoner, queue=queue)
     else:
         url = (base_url+URLS['rank_data']).format(region=region, summonerId=summonerId)
         payload = {'api_key': api_key}
@@ -160,7 +159,6 @@ def getRankInfo(region, summonerId, queue, update=False):
         while response.status_code != requests.codes.ok:
             time.sleep(1)
             response = executeRequest(url, payload)
-        summoner = getSummonerInfoById(summonerId)
         if update and RankInfo.objects.filter(summoner=summoner, queue=queue).exists():
             RankInfo.objects.get(summoner=summoner, queue=queue).delete()
         return handleMatchRank(summoner, queue, response.json())
@@ -169,13 +167,12 @@ def getRankInfoByList(region, summoners, queue, update=False):
     rankList = []
     new = []
     for summoner in summoners:
-        if RankInfo.filter(summoner=summoner, region=region, queue=queue).exists() and not update:
-            rankList.append(RankInfo.get(summoner=summoner, region=region, queue=queue))
+        if RankInfo.objects.filter(summoner=summoner, queue=queue).exists() and not update:
+            rankList.append(RankInfo.objects.get(summoner=summoner, queue=queue))
         else:
-            new.append(summoner)
-    
+            new.append(summoner) 
     if len(new) > 0:
-        url = (base_url+URLS['rank_data']).format(region=region, summonerId=','.join(str(x) for x in new))
+        url = (base_url+URLS['rank_data']).format(region=region, summonerId=','.join(str(x.summonerId) for x in new))
         payload = {'api_key': api_key}
         response = executeRequest(url, payload)
         while response.status_code != requests.codes.ok:
@@ -185,7 +182,7 @@ def getRankInfoByList(region, summoners, queue, update=False):
             if update and RankInfo.objects.filter(summoner=summoner, queue=queue).exists():
                 RankInfo.objects.get(summoner=summoner, queue=queue).delete()
             newRank = handleMatchRank(summoner, queue, response.json())
-            rankList.append(rankList)
+            rankList.append(newRank)
     return rankList
 
 def getMatchListInfo(region, summonerId, queue):
@@ -198,16 +195,16 @@ def getMatchListInfo(region, summonerId, queue):
     return response.json()
 
 def getMatchInfo(region, matchId):
-    if Match.filter(matchId=matchId, region=region).exists():
-        return Match.get(matchId=matchId, region=region)
+    #if Match.objects.filter(matchId=matchId, region=region).exists():
+        #return Match.objects.get(matchId=matchId, region=region)
+    #else:
+    url = (base_url+URLS['match']).format(region=region, matchId=matchId)
+    payload = {'api_key': api_key}
+    response = executeRequest(url, payload)
+    if response.status_code != requests.codes.ok:
+        return None
     else:
-        url = (base_url+URLS['match']).format(region=region, matchId=matchId)
-        payload = {'api_key': api_key}
-        response = executeRequest(url, payload)
-        if response.status_code != requests.codes.ok:
-            return None
-        else:
-            return response.json()
+        return response.json()
 
 def handle_status(r):
     if r.status_code == requests.codes.ok:

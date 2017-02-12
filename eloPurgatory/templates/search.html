@@ -3,28 +3,21 @@
 {% block search %}
 
 <form action="{% url 'eloPurgatory:handler' %}" method="post" onsubmit="return validate()">
+    {% csrf_token %}
     <select id="region" name="region">
-        <option value="na" selected>NA</option>
-        <option value="eune">EUNE</option>
-        <option value="euw">EUW</option>
-        <option value="jp">JP</option>
-        <option value="kr">KR</option>
-        <option value="lan">LAN</option>
-        <option value="las">LAS</option>
-        <option value="br">BR</option>
-        <option value="oce">OCE</option>
-        <option value="tr">TR</option>
-        <option value="ru">RU</option>
-        <option value="pbe">PBE</option>
+        {% for region in regions %}
+            <option value={{region}} {% if currentRegion == region %}selected{% endif %}>{{region|upper}}</option>
+        {% endfor %}
     </select>
     Summoner:
     <input type="text" id="summoner" name="summoner">
     <select id="queue" name="queue">
-        <option value="RANKED_SOLO_5x5" selected>SOLO</option>
-        <option value="RANKED_FLEX_SR">FLEX</option>
+        {% for text, value in queues.items %}
+            <option value={{value}} {% if currentQueue == value %}selected{% endif %}>{{text|upper}}</option>
+        {% endfor %}
     </select>
-    <input type="submit" name="standard" value="Search">
-    <input type="submit" name="update" value="Update">
+    <input type="submit" name="search" value="Search">
+    <input type="submit" name="search" value="Update">
 </form>
 
 <script>

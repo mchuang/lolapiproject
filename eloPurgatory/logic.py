@@ -1,11 +1,11 @@
 from django.utils import timezone
 from django.forms.models import model_to_dict
 from eloPurgatory.models import *
-
-def handleSummoner(region, name, json):
-    info = json[str(name).lower()]
+import pdb
+def handleSummoner(region, summonerId, json):
+    info = json[str(summonerId)]
     summoner = Summoner(summonerId=info['id'],name=info['name'], region=region)
-    summoner.save()
+    #summoner.save()
     return summoner
 
 def handleRank(summoner, queue, json):
@@ -13,23 +13,25 @@ def handleRank(summoner, queue, json):
     for rank in ranks:
         if rank['queue'] == queue:
             result = RankInfo(summoner=summoner, queue=rank['queue'], division=rank['entries'][0]['division'], tier=rank['tier'])   
-            result.save()
+            #result.save()
             return result
 
 def handleMatchRank(summoner, queue, json):
     if str(summoner.summonerId) not in json.keys():
-        return RankInfo(summoner=summoner, queue=queue, division='UNRANKED', tier='UNRANKED', prevSeasonTier=prevRank)
+        unranked = RankInfo(summoner=summoner, queue=queue, division='UNRANKED', tier='UNRANKED')
+        #unranked.save()
+        return unranked
     ranks = json[str(summoner.summonerId)]
     for rank in ranks:
         if rank['queue'] == queue:
             if rank['tier'] == "CHALLENGER" or rank['tier'] == "MASTER":
-                rankInfo = RankInfo(summoner=summoner, queue=rank['queue'], division=rank['entries'][0]['leaguePoints'], tier=rank['tier'], prevSeasonTier=prevRank)
+                rankInfo = RankInfo(summoner=summoner, queue=rank['queue'], division=rank['entries'][0]['leaguePoints'], tier=rank['tier'])
             else:
-                rankInfo = RankInfo(summoner=summoner, queue=rank['queue'], division=rank['entries'][0]['division'], tier=rank['tier'], prevSeasonTier=prevRank)
-            rankInfo.save()
+                rankInfo = RankInfo(summoner=summoner, queue=rank['queue'], division=rank['entries'][0]['division'], tier=rank['tier'])
+            #rankInfo.save()
             return rankInfo
-    unranked = RankInfo(summoner=summoner, queue=queue, division='UNRANKED', tier='UNRANKED', prevSeasonTier=prevRank)
-    unranked.save()
+    unranked = RankInfo(summoner=summoner, queue=queue, division='UNRANKED', tier='UNRANKED')
+    #unranked.save()
     return unranked
 
 def handleMatchDetails(json):
@@ -48,7 +50,7 @@ def handleMatchDetails(json):
         data = { 'prevSeasonTier': playerInfo['highestAchievedSeasonTier'], 'teamId': playerInfo['teamId'] }
         players.update({ playerId: data })
 
-    for team in json['teams']
+    for team in json['teams']:
         if team['winner']:
             matchData.update({ 'winner': team['teamId'] })
         else:
