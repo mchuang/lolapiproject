@@ -2,7 +2,7 @@
 
 {% block search %}
 
-<form action="{% url 'eloPurgatory:handler' %}" method="get" onsubmit="return validate()">
+<form action="{% url 'eloPurgatory:handler' %}" method="post" onsubmit="return validate()">
     <select id="region" name="region">
         <option value="na" selected>NA</option>
         <option value="eune">EUNE</option>
@@ -23,7 +23,8 @@
         <option value="RANKED_SOLO_5x5" selected>SOLO</option>
         <option value="RANKED_FLEX_SR">FLEX</option>
     </select>
-    <input type="submit">
+    <input type="submit" name="standard" value="Search">
+    <input type="submit" name="update" value="Update">
 </form>
 
 <script>
