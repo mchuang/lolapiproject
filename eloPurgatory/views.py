@@ -62,7 +62,7 @@ def basicCall(request, region, queue, summonerName, update=False):
     matches = getMatchListInfo(region, summoner.summonerId, queue)['matches']
     #matches = matchlistInfo['matches']
     index = 0
-    matchlimit = 10
+    matchlimit = 20
     matchlist = {}
     for match in matches:
         if index >= matchlimit:

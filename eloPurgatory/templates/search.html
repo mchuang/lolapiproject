@@ -10,7 +10,7 @@
         {% endfor %}
     </select>
     Summoner:
-    <input type="text" id="summoner" name="summoner">
+    <input type="text" id="summoner" name="summoner" value={{summoner.name}}>
     <select id="queue" name="queue">
         {% for text, value in queues.items %}
             <option value={{value}} {% if currentQueue == value %}selected{% endif %}>{{text|upper}}</option>

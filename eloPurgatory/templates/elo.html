@@ -7,6 +7,7 @@
 <div id="chart">
 </div>
 
+<br>
 <img src={% static tier_icons.BRONZE %} width=200 height=200>
 <img src={% static tier_icons.SILVER %} width=200 height=200>
 <img src={% static tier_icons.GOLD %} width=200 height=200>
@@ -14,7 +15,7 @@
 <img src={% static tier_icons.DIAMOND %} width=200 height=200>
 <img src={% static tier_icons.MASTER %} width=200 height=200>
 <img src={% static tier_icons.CHALLENGER %} width=200 height=200>
-
+<br>
 
 <form id="matchlist">
 <ul>
@@ -67,19 +68,19 @@ function rankHandler() {
             if (playerData.rank.tier == "UNRANKED") {
                 rankCount[playerData.rank.tier]++;
             } else if (playerData.rank.tier == "CHALLENGER" || playerData.rank.tier == "MASTER") {
-                rankCount[playerData.rank.tier].append(playerData.rank.division);
+                rankCount[playerData.rank.tier].push(playerData.rank.division);
             } else {
                 rankCount[playerData.rank.tier][playerData.rank.division]++;
             }
         }
     }
 
-    rankCount["MASTER"] = handleMasterChallenger(rankCount["MASTER"], 5);
-    rankCount["CHALLENGER"] = handleMasterChallenger(rankCount["CHALLENGER"], 5);
+    rankCount["MASTER"] = handleMasterChallenger(rankCount["MASTER"], 5, 0);
+    rankCount["CHALLENGER"] = handleMasterChallenger(rankCount["CHALLENGER"], 5, rankCount["CHALLENGER"][0]);
      
     var dataset = organizeRankData(rankCount);
-    console.log(dataset);
-    drawRankDistroChart(dataset["data"], dataset["label"]);
+    
+    drawRankDistroChart(dataset["data"]);
 }
 
 function handleMasterChallenger(dataset, blocks, lower) {
@@ -113,18 +114,16 @@ function handleMasterChallenger(dataset, blocks, lower) {
 
 function organizeRankData(ranks) {
     var data = [];
-    var label = [];
     for (tier in ranks) {
         if (tier == "UNRANKED") {
             continue;
         } else {
             for (division in ranks[tier]) {
                 data.push(ranks[tier][division]);
-                label.push(division);
             }
         }
     }
-    return { "data": data, "label": label }
+    return { "data": data }
 }
 
 function drawRankDistroChart(dataset, labelset) {
@@ -151,39 +150,42 @@ function drawRankDistroChart(dataset, labelset) {
                          .attr("height", function(d) {
                             return d * 20;
                          })
-                         .attr("fill" , function(d) {
-                             return "rgb(0, 0, " + (d * 20) + ")";
+                         .attr("fill" , function(d, i) {
+                             switch(Math.floor(i/5)) {
+                                case 0:
+                                    return "rgb(" + (80+d*5) + "," + (50+d*5) + "," + (20+d*5) + ")";
+                                case 1:
+                                    return "rgb(" + (150+d*5) + "," + (150+d*5) + "," + (150+d*5) + ")";
+                                case 2:
+                                    return "rgb(255," + (180+d*5) + ",0)";
+                                case 3:
+                                    return "rgb(0," + (150+d*5) + ",0)";
+                                case 4:
+                                    return "rgb(" + (185-d*10) + ",242,255)";
+                                case 5:
+                                    return "rgb(" + (150+d*5) + ",0,0)";
+                                case 6:
+                                    return "rgb(" + (150+d*5) + ",0," + (150+d*5) + ")";
+                                default:
+                                    return "rgb(0,0,0)"
+                             }
                          });
 
     svg.selectAll("text").data(dataset)
                          .enter()
                          .append("text")
                          .text(function(d) {
-                           return d;
+                           if (d != 0) { return d; }
                          })
                          .attr("x", function(d, i) {
                             return i * (w / dataset.length) + 20 ;
                          })
                          .attr("y", function(d) {
-                           return h - (d * 10) + 20;
+                           return h - (d * 20) + 15;
                          })
                          .attr("text-anchor", "middle")
                          .attr("fill", "white");
         
-    svg.selectAll("text").data(labelset)
-                         .enter()
-                         .append("text")
-                         .text(function(d) {
-                            return d;
-                         })
-                         .attr("x", function(d, i) {
-                            return i * (w / labelset.length) + 20;
-                         })
-                         .attr("y", function(d) {
-                            return h;
-                         })
-                         .attr("text-anchor", "middle")
-                         .attr("fill", "black");
 }
 
 </script>
